@@ -153,6 +153,7 @@ for year_week_mask in reversed(df[df.year_week.str.startswith(('2024', '2025'))]
     )
 
 
+
     dsei1 = dsei[dsei.NumDSEI == 1][['idm_ioibge']]
     dsei1 = dsei1.assign(key_dsei = 1)
 
