@@ -63,7 +63,8 @@ def smooth_lowess(pr, frac=0.3):
 # -------------------------------------------------------------------
 def mem_epidemic_period(set_muni, delta=0.02):
     """
-    Compute epidemic period (step 1 of MEM) for each season/year.
+    Compute epidemic period (step 1 of MEM) for each season (number of surveillance 
+    weeks, usually 52 weeks, that is a year).
 
     Parameters
     ----------
