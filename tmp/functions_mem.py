@@ -10,7 +10,7 @@ Centre for Data and Knowledge Integration for Health (CIDACS/FIOCRUZ)
 
 Date
 ----
-September 2025
+January 2026
 
 Description
 -----------
@@ -32,6 +32,175 @@ from scipy.stats import norm
 from scipy.stats.mstats import gmean
 from numpy.lib.stride_tricks import sliding_window_view
 from statsmodels.nonparametric.smoothers_lowess import lowess
+
+# -------------------------------------------------------------------
+# Utility: epidemiological season based on a cutoff week.
+# -------------------------------------------------------------------
+def add_sea(data, year_col="epiyear", week_col="epiweek", n_week=42):
+    """
+    Add epidemiological season column based on a cutoff week.
+
+    Season definition:
+    - weeks >= n_week belong to the next year's season
+    - weeks < n_week belong to the current year's season
+    The season is labeled by the ending year.
+    """
+
+    col = f"season_w{n_week}"
+
+    data[col] = data[year_col]
+    data.loc[data[week_col] >= n_week, col] += 1
+
+    return data
+
+# -------------------------------------------------------------------
+# Utility: Check validity conditions for selected years.
+# -------------------------------------------------------------------
+def summary_is_valid(
+    summary,
+    years_to_check,
+    k_start_min=10,
+    r_max=20,
+    year_col="epiyear",
+):
+    """
+    Check validity conditions only for selected years.
+    """
+
+    sub = summary[summary[year_col].isin(years_to_check)]
+
+    # if no rows for those years, treat as invalid (safer)
+    if sub.empty:
+        return False
+
+    return (
+        (sub["k_start"] > k_start_min).all()
+        and
+        (sub["r_j_estr"] <= r_max).all()
+    )
+
+# -------------------------------------------------------------------
+# Utility: Find best season definition and delta for MEM
+# -------------------------------------------------------------------
+def find_best_season_and_delta(
+    df,
+    city,
+    season_weeks=(0, 52, 51, 50, 49, 48, 47, 46, 45, 44, 43, 42, 41, 40, 39, 38, 37, 36, 35, 34, 33, 32, 31, 30
+                  ),
+    delta_start=0.02,
+    delta_max=0.04,
+    delta_step=0.001,
+    k_start_min=10,
+    r_max=20,
+):
+    """
+    Identify the first combination of seasonal definition and MEM delta
+    that produces a valid epidemic period summary for a given city.
+
+    The function iterates over different season definitions (based on
+    alternative starting weeks) and delta values used in the MEM
+    epidemic period detection. For each combination, it computes the
+    epidemic summary and checks whether it satisfies predefined
+    validation criteria.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Input dataframe containing epidemiological time series data for
+        multiple municipalities. Must include at least:
+        - `co_ibge` : municipality identifier
+        - `atend_ivas` : raw time series of ILI attendances
+        - `co_uf`, `nm_uf` : state information
+
+    city : int or str
+        IBGE code identifying the municipality to be analyzed.
+
+    season_weeks : tuple of int, optional (default=(42, 32, 0))
+        Candidate starting weeks used to define alternative epidemiological
+        seasons. Each value is passed to `add_sea` to create a season/year
+        column.
+
+    delta_start : float, optional (default=0.02)
+        Minimum delta value to be tested in the MEM algorithm.
+
+    delta_max : float, optional (default=0.04)
+        Maximum delta value to be tested (exclusive).
+
+    delta_step : float, optional (default=0.001)
+        Step size used to generate the sequence of delta values.
+
+    k_start_min : int, optional (default=10)
+        Minimum allowed value for the epidemic start week (`k_start`)
+        used in the summary validation step.
+
+    r_max : int, optional (default=20)
+        Maximum allowed epidemic duration (`r`) used in the summary
+        validation step.
+
+    Returns
+    -------
+    pandas.DataFrame or None
+        A copy of the first epidemic summary that satisfies the validation
+        criteria, augmented with metadata:
+        - `co_ibge` : municipality code
+        - `co_uf`, `nm_uf` : state identifiers
+        - `season_def` : season definition used
+        - `delta_used` : delta value used in MEM
+
+        Returns `None` if no valid combination of season definition and
+        delta is found.
+
+    Notes
+    -----
+    - The ILI time series is smoothed using a 4-week moving average
+      before applying the MEM algorithm.
+    - The function stops at the *first* valid combination found; it does
+      not evaluate all possible combinations exhaustively.
+    - This function relies on the external functions `add_sea`,
+      `mem_epidemic_period`, and `summary_is_valid`.
+    """
+
+    # subset city
+    set_muni = (
+        df[df.co_ibge == city]
+        .copy()
+        .reset_index(drop=True)
+    )
+
+    # smooth series
+    set_muni["atend_ivas_ma"] = (
+        set_muni["atend_ivas"]
+        .rolling(window=4, min_periods=1)
+        .mean()
+    )
+
+    deltas = np.arange(delta_start, delta_max- 1e-9, +delta_step)
+
+    for w in season_weeks:
+        # create season definition
+        set_muni = add_sea(set_muni, n_week=w)
+        season_col = f"season_w{w}"
+
+        for delta in deltas:
+            
+            summary, _ = mem_epidemic_period(
+                set_muni,
+                col_year=season_col,
+                col_series="atend_ivas_ma",
+                delta=delta,
+            )
+
+
+            if summary_is_valid(summary, years_to_check=[2023, 2024], k_start_min=k_start_min, r_max=r_max):
+                out = summary.copy()
+                out["co_ibge"] = city
+                out["season_def"] = season_col
+                out["delta_used"] = delta
+                out["co_uf"] = set_muni.co_uf.iloc[0]
+                out["nm_uf"] = set_muni.nm_uf.iloc[0]
+                return out
+
+    return None
 
 
 # -------------------------------------------------------------------
@@ -61,7 +230,90 @@ def smooth_lowess(pr, frac=0.3):
 # -------------------------------------------------------------------
 # Step 1: Epidemic period estimation
 # -------------------------------------------------------------------
-def mem_epidemic_period(set_muni, delta=0.02):
+def mem_epidemic_period(set_muni, col_year = 'epiyear', col_series = 'atend_ivas_ma',  delta=0.02):
+    """
+    Compute epidemic period (step 1 of MEM) for each season/year.
+
+    Parameters
+    ----------
+    set_muni : DataFrame
+        Must contain columns ['epiyear', 'atend_ivas'].
+    delta : float, optional
+        Threshold for slope increment (default=0.02).
+
+    Returns
+    -------
+    summary : DataFrame
+        Columns: ['epiyear', 'r_j_estr', 'k_start', 'k_end']
+    details : dict
+        Keys = epiyear, values = dict with:
+            - r_j_estr : estimated epidemic duration (weeks)
+            - k_start  : start week (1-indexed)
+            - k_end    : end week (inclusive, 1-indexed)
+            - p_j_r    : MAP percentages
+            - sm_p_j_r : smoothed MAP curve
+            - t_j_r    : cumulative totals by window length
+    """
+    
+    results = {}
+    summary_records = []
+
+    for year in sorted(set_muni[col_year].unique()):
+        s1 = set_muni[set_muni[col_year] == year].reset_index(drop=True)
+
+        t = np.asarray(s1[col_series])
+        S = len(t)
+        tS = np.sum(t)
+
+        # --- compute t_j_r (max accumulated per window length) ---
+        t_j_r = np.array([
+            sliding_window_view(t, r).sum(axis=1).max()
+            for r in range(1, S + 1)
+        ])
+
+        # --- MAP curve ---
+        p_j_r = t_j_r / tS
+        sm_p_j_r = smooth_lowess(p_j_r)
+
+        # --- increments Δr ---
+        delta_j_r = np.diff(sm_p_j_r)
+
+        # --- determine optimal duration r_j_estr ---
+        indices = np.where(delta_j_r < delta)[0]
+        r_j_estr = int(indices.min()) if len(indices) > 0 else S
+
+        # --- find k_estr (start index of epidemic window) ---
+        window_r = sliding_window_view(t, r_j_estr)
+        window_sums = window_r.sum(axis=1)
+        k_estr = window_sums.argmax()
+
+        k_start = k_estr + 1          # 1-indexed
+        k_end   = k_estr + r_j_estr   # inclusive
+
+        # --- save results ---
+        results[year] = {
+            'r_j_estr': r_j_estr,
+            'k_start': k_start,
+            'k_end': k_end,
+            'p_j_r': p_j_r,
+            'sm_p_j_r': sm_p_j_r,
+            't_j_r': t_j_r
+        }
+
+        summary_records.append({
+            'epiyear': year,
+            'r_j_estr': r_j_estr,
+            'k_start': k_start,
+            'k_end': k_end
+        })
+
+    summary = pd.DataFrame(summary_records)
+
+    return summary, results
+# -------------------------------------------------------------------
+# Step 1: Epidemic period estimation (old version)
+# -------------------------------------------------------------------
+def mem_epidemic_period_old(set_muni, delta=0.02):
     """
     Compute epidemic period (step 1 of MEM) for each season (number of surveillance 
     weeks, usually 52 weeks, that is a year).
@@ -230,3 +482,4 @@ def baseline_thresholds(dta, lst_sea, delta = 0.02,value_col="atend_ivas"):
     )
 
     return  baseline,  post_baseline, epidemic_threshold, post_threshold, df_thresholds_intensity 
+
