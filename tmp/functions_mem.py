@@ -401,11 +401,11 @@ def mem_epidemic_period_old(set_muni, delta=0.02):
 # -------------------------------------------------------------------
 def baseline_thresholds(
     dta,
+    summary_df,
     lst_sea,
     value_col="atend_ivas",
     col_year="epiyear",
-    col_week="epiweek",
-    summary_df=summary,
+    col_week="epiweek"
 ):
     """
     Compute baselines and epidemic thresholds from seasonal surveillance data.
@@ -446,7 +446,7 @@ def baseline_thresholds(
         pre = season.loc[season['id'] <= k_s, value_col].values
         post = season.loc[season['id'] > k_e, value_col].values
         epi = season.loc[
-            (season[id] > k_s) & (season['id'] <= k_e),
+            (season['id'] > k_s) & (season['id'] <= k_e),
             value_col,
         ].values
 
@@ -481,13 +481,15 @@ def baseline_thresholds(
         thresholds_intensity.items(), columns=["percentile", "value"]
     )
 
-    return {
-    "baseline": baseline,
-    "post_baseline": post_baseline,
-    "epidemic_threshold": epidemic_threshold,
-    "post_threshold": post_threshold,
-    "intensity": df_thresholds_intensity,
-}
+    return  baseline,  post_baseline, epidemic_threshold, post_threshold, df_thresholds_intensity 
+
+    #return {
+    #"baseline": baseline,
+    #"post_baseline": post_baseline,
+    #"epidemic_threshold": epidemic_threshold,
+    #"post_threshold": post_threshold,
+    #"intensity": df_thresholds_intensity,
+    #    }
 
     
 
