@@ -1,151 +1,158 @@
-**Author:**  
-Juliane Oliveira  
+# Moving Epidemic Method (MEM) – Python implementation for early warning surveillance
 
-**Affiliation:**  
-Centre for Data and Knowledge Integration for Health (CIDACS)  
-Gonçalo Moniz Institute, Oswaldo Cruz Foundation (FIOCRUZ), Brazil  
+**Author:** Juliane Oliveira
+**Affiliation:** Centre for Data and Knowledge Integration for Health (CIDACS), 
+Gonçalo Moniz Institute, Oswaldo Cruz Foundation (FIOCRUZ), Brazil
 
----
+This repository contains a **Python implementation of the Moving Epidemic Method (MEM)** 
+to be used in the context of early warning detection of epidemic surges, developed as part 
+of the **AESOP Project**.
 
-This repository contains Python functions and executable scripts that implement 
-models for early warning detection of epidemic surges.
-
-These tools are developed as part of the **AESOP project** and are designed to
-support real-time and retrospective surveillance analyses at the municipal
-level.
-
-# Moving Epidemic Method (MEM) 
+The original MEM methodology was proposed and widely implemented in **R**. This work provides 
+a **fully Python-based implementation**, designed for large-scale, municipality-level 
+surveillance analyses and integration with modern data pipelines.
 
 ---
 
-## Overview
+## Methodological reference
 
-The MEM framework is used to:
-- define epidemic seasons,
-- estimate epidemic thresholds,
-- and identify periods of increased transmission intensity.
+The implementation follows the principles described in:
 
-In this implementation, MEM is applied to weekly surveillance data to:
-1. test alternative seasonal definitions,
-2. tune the MEM `delta` parameter,
-3. and select the configuration that satisfies predefined epidemiological
-   validity criteria.
+> Vega T, Lozano JE, Meerhoff T, Snacken R, Mott J, Ortiz de Lejarazu R, Nunes B.
+> *Influenza surveillance in Europe: establishing epidemic thresholds by the moving epidemic method.*
+> **Influenza and Other Respiratory Viruses**, 2013; 7(4): 546–558.
 
----
+Key adaptations include:
 
-## Methodological background
-
-This implementation is based on the **Moving Epidemic Method (MEM)** originally
-proposed for influenza surveillance in Europe (Vega et al. (2013)). MEM provides a statistically
-grounded framework to define epidemic thresholds and intensity levels using
-historical surveillance data.
-
-
-While the original Moving Epidemic Method (MEM) was developed and disseminated
-primarily through an R implementation, the present work provides a **native
-Python implementation** of MEM. This implementation preserves the core
-statistical principles of the original method while adapting it to Python-based
-data science workflows.
-
-The Python implementation has been developed to support scalable analyses,
-integration with existing surveillance pipelines, and broader use within the
-AESOP project.
-
-## Pipeline structure to run MEM
-
-- functions_mem.py # Core MEM functions and utilities
-- def_sea_peri_MEM_all_cities.py # Executable script: select best season and delta
+* a Python-native implementation,
+* flexible seasonal definitions at the municipality level,
+* integration with rolling averages and automated parameter selection,
+* scalability for nationwide surveillance systems.
 
 ---
 
-## Dependencies
+## Workflow overview
 
-The code requires Python ≥ 3.9 and the following packages:
+The MEM pipeline is executed in **two main steps**, each corresponding to an executable script.
 
-- numpy
-- pandas
-- scipy
-- statsmodels
-- pyarrow
-- matplotlib (optional, for diagnostics)
+```
+┌──────────────────────────────┐
+│  Municipal weekly data       │
+│  (ILI / IVAS counts)         │
+└──────────────┬───────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│  Script 1                    │
+│  Select season & delta       │
+│  (per municipality)          │
+└──────────────┬───────────────┘
+               │  def_sea_MEM_out_<date>.parquet
+               ▼
+┌──────────────────────────────┐
+│  Script 2                    │
+│  MEM baselines & thresholds  │
+│  (per municipality)          │
+└──────────────┬───────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│  MEM outputs                 │
+│  Baseline, thresholds,       │
+│  intensity levels            │
+└──────────────────────────────┘
+```
 
 ---
 
-## Execution order
-
-### 1. Select seasonal definition and delta (per municipality)
+## 1. Select seasonal definition and delta (per municipality)
 
 **Script:** `def_sea_peri_MEM_all_cities.py`
 
 This script:
-- loads municipal-level surveillance data,
-- applies MEM using multiple seasonal definitions (e.g. calendar year or
+
+* loads municipal-level surveillance data,
+* applies MEM using multiple seasonal definitions (e.g. calendar year or
   influenza-style seasons),
-- searches over a range of `delta` values,
-- and selects the configuration that satisfies predefined constraints on
-  epidemic onset (`k_start`) and epidemic growth (`r_j_estr`).
+* searches over a range of `delta` values,
+* and selects the configuration that satisfies predefined constraints on
+  epidemic onset and epidemic growth.
 
-**Outputs:**
-- A Parquet file containing the selected season definition and delta for each
-  municipality.
-- A CSV file listing municipalities for which no valid MEM configuration was
-  found.
+Each municipality is processed independently.
 
----
+### Outputs
 
-## Input data
+* `def_sea_MEM_out_<date>.parquet`
+  Selected seasonal definition and MEM parameter (`delta`) for each municipality.
 
-The input dataset must contain, at minimum, the following columns:
+* `set_bad_cities_<date>.csv`
+  Municipalities for which no valid MEM configuration was found.
 
-- `co_ibge` – municipality code  
-- `epiyear` – epidemiological year  
-- `epiweek` – epidemiological week  
-- `atend_ivas` – weekly ILI/IVAS counts  
+### Input data requirements
+
+The input dataset must contain, at minimum:
+
+* `co_ibge` – municipality code
+* `epiyear` – epidemiological year
+* `epiweek` – epidemiological week
+* `atend_ivas` – weekly ILI/IVAS counts
 
 Additional metadata columns (state, municipality name, rates) may be included.
 
 ---
 
-## Outputs
+## 2. Estimate MEM baselines and epidemic thresholds (per municipality)
 
-- `def_sea_MEM_out_<date>.parquet`  
-  Selected seasonal definition and MEM parameters per municipality.
+**Script:** `mem_thresholds_all_cities.py`
 
-- `set_bad_cities_<date>.csv`  
-  Municipalities for which MEM validity criteria were not satisfied.
+This script:
+
+* loads municipal-level weekly surveillance data,
+* loads the selected seasonal definition and `delta` from Script 1,
+* applies a 4-week moving average to smooth time series,
+* dynamically constructs epidemiological seasons (calendar year or shifted
+  influenza-style seasons),
+* applies MEM independently to each municipality,
+* estimates baselines and epidemic thresholds,
+* computes low, medium, and high intensity levels.
+
+The seasonal structure used for each municipality exactly matches the one
+selected in the previous step.
+
+### Outputs
+
+* `mem_output_<date>.parquet`
+  Consolidated MEM results per municipality, including:
+
+  * baseline and post-baseline values,
+  * epidemic and post-epidemic thresholds,
+  * intensity levels (low, medium, high),
+  * seasonal metadata.
 
 ---
 
 ## Notes
 
-- The MEM implementation follows standard methodological references.
-- Seasonal definitions include both calendar-year (`epiyear`) and influenza-style
-  seasons starting at different epidemiological weeks.
-- The code is designed to be modular and extensible for future AESOP analyses.
+* This implementation adapts the original MEM methodology to Python while
+  preserving its statistical foundations.
+* Seasonal definitions may correspond to the calendar year or to
+  municipality-specific epidemic onset weeks.
+* All computations are performed independently for each municipality,
+  enabling scalable nationwide analyses.
+* The code is modular and extensible, and was developed to support real-time
+  surveillance workflows within the **AESOP Project**.
 
 ---
 
-## Acknowledgements
-
-The Moving Epidemic Method (MEM) was originally developed for influenza
-surveillance and has been adapted here for broader early warning applications
-within the AESOP project.
-
 ## Citation
 
-If you use this code or parts of it in academic work, reports, or software,
-please cite it as follows:
+If you use this software, please cite it as:
 
-> Oliveira, J. (2026). *Moving Epidemic Method (MEM) implementation for early
-> warning detection of epidemic surges*. AESOP Project, CIDACS / FIOCRUZ.
-> 
+> Oliveira J. *Moving Epidemic Method (MEM) implementation for early warning detection of epidemic surges.*
+> Centre for Data and Knowledge Integration for Health (CIDACS), Oswaldo Cruz Foundation (FIOCRUZ), 2026.
 
-## Methodological References
-
-> Vega T, Lozano JE, Meerhoff T, Snacken R, Mott J, Ortiz de Lejarazu R, Nunes B.  
-> *Influenza surveillance in Europe: establishing epidemic thresholds by the
-> moving epidemic method.*  
-> **Influenza and Other Respiratory Viruses**, 2013; 7(4):546–558.
+A `CITATION.cff` file is provided to facilitate citation in software-aware
+reference managers.
 
 
 
