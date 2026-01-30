@@ -1,0 +1,26 @@
+```yaml
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+
+title: "Moving Epidemic Method (MEM) implementation for early warning detection of epidemic surges"
+
+authors:
+  - family-names: Oliveira
+    given-names: Juliane
+    affiliation: "Centre for Data and Knowledge Integration for Health (CIDACS), Gonçalo Moniz Institute, Oswaldo Cruz Foundation (FIOCRUZ), Brazil"
+
+year: 2026
+
+institution: 
+  - name: "Oswaldo Cruz Foundation (FIOCRUZ)"
+
+keywords:
+  - Moving Epidemic Method
+  - MEM
+  - Early warning systems
+  - Epidemic surveillance
+  - AESOP
+
+notes:
+  - "Developed as part of the AESOP Project"

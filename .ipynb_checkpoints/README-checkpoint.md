@@ -35,9 +35,8 @@ In this implementation, MEM is applied to weekly surveillance data to:
 
 ## Pipeline structure to run MEM
 
-├── functions_mem.py # Core MEM functions and utilities
-├── def_sea_peri_MEM_all_cities.py # Executable script: select best season and delta
-
+- functions_mem.py # Core MEM functions and utilities
+- def_sea_peri_MEM_all_cities.py # Executable script: select best season and delta
 
 ---
 
@@ -107,6 +106,32 @@ Additional metadata columns (state, municipality name, rates) may be included.
 - The code is designed to be modular and extensible for future AESOP analyses.
 
 ---
+
+## Acknowledgements
+
+The Moving Epidemic Method (MEM) was originally developed for influenza
+surveillance and has been adapted here for broader early warning applications
+within the AESOP project.
+
+## Citation
+
+If you use this code or parts of it in academic work, reports, or software,
+please cite it as follows:
+
+> Oliveira, J. (2026). *Moving Epidemic Method (MEM) implementation for early
+> warning detection of epidemic surges*. AESOP Project, CIDACS / FIOCRUZ.
+
+### BibTeX
+
+```bibtex
+@software{oliveira_mem_aesop_2026,
+  author       = {Oliveira, Juliane},
+  title        = {Moving Epidemic Method (MEM) implementation for early warning detection of epidemic surges},
+  year         = {2026},
+  institution  = {Centre for Data and Knowledge Integration for Health (CIDACS), Oswaldo Cruz Foundation (FIOCRUZ)},
+  note         = {Developed as part of the AESOP Project},
+}
+
 
 
 
