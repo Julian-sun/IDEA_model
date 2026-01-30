@@ -7,8 +7,8 @@ Gonçalo Moniz Institute, Oswaldo Cruz Foundation (FIOCRUZ), Brazil
 
 ---
 
-This repository contains Python functions and executable scripts implementing
-the models for early warning detection of epidemic surges.
+This repository contains Python functions and executable scripts that implement 
+models for early warning detection of epidemic surges.
 
 These tools are developed as part of the **AESOP project** and are designed to
 support real-time and retrospective surveillance analyses at the municipal
@@ -32,6 +32,24 @@ In this implementation, MEM is applied to weekly surveillance data to:
    validity criteria.
 
 ---
+
+## Methodological background
+
+This implementation is based on the **Moving Epidemic Method (MEM)** originally
+proposed for influenza surveillance in Europe (Vega et al. (2013)). MEM provides a statistically
+grounded framework to define epidemic thresholds and intensity levels using
+historical surveillance data.
+
+
+While the original Moving Epidemic Method (MEM) was developed and disseminated
+primarily through an R implementation, the present work provides a **native
+Python implementation** of MEM. This implementation preserves the core
+statistical principles of the original method while adapting it to Python-based
+data science workflows.
+
+The Python implementation has been developed to support scalable analyses,
+integration with existing surveillance pipelines, and broader use within the
+AESOP project.
 
 ## Pipeline structure to run MEM
 
@@ -57,7 +75,7 @@ The code requires Python ≥ 3.9 and the following packages:
 
 ### 1. Select seasonal definition and delta (per municipality)
 
-**Script:** `run_mem_selection.py`
+**Script:** `def_sea_peri_MEM_all_cities.py`
 
 This script:
 - loads municipal-level surveillance data,
@@ -120,17 +138,14 @@ please cite it as follows:
 
 > Oliveira, J. (2026). *Moving Epidemic Method (MEM) implementation for early
 > warning detection of epidemic surges*. AESOP Project, CIDACS / FIOCRUZ.
+> 
 
-### BibTeX
+## Methodological References
 
-```bibtex
-@software{oliveira_mem_aesop_2026,
-  author       = {Oliveira, Juliane},
-  title        = {Moving Epidemic Method (MEM) implementation for early warning detection of epidemic surges},
-  year         = {2026},
-  institution  = {Centre for Data and Knowledge Integration for Health (CIDACS), Oswaldo Cruz Foundation (FIOCRUZ)},
-  note         = {Developed as part of the AESOP Project},
-}
+> Vega T, Lozano JE, Meerhoff T, Snacken R, Mott J, Ortiz de Lejarazu R, Nunes B.  
+> *Influenza surveillance in Europe: establishing epidemic thresholds by the
+> moving epidemic method.*  
+> **Influenza and Other Respiratory Viruses**, 2013; 7(4):546–558.
 
 
 
