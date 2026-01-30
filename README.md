@@ -42,19 +42,17 @@ The MEM pipeline is executed in **two main steps**, each corresponding to an exe
 └──────────────┬───────────────┘
                │
                ▼
-┌──────────────────────────────┐
-│  Script 1                    │
-│  Select season & delta       │
-│  (per municipality)          │
-└──────────────┬───────────────┘
+┌──────────────────────────────────────────────┐
+│  Script 1 (def_sea_peri_MEM_all_cities.py)   │
+│  Select season & delta (per municipality)    │
+└──────────────┬───────────────────────────────┘
                │  def_sea_MEM_out_<date>.parquet
                ▼
-┌──────────────────────────────┐
-│  Script 2                    │
-│  MEM baselines & thresholds  │
-│  (per municipality)          │
-└──────────────┬───────────────┘
-               │
+┌─────────────────────────────────────────────────┐
+│  Script 2 (mem_thresholds_all_cities.py)        │
+│  MEM baselines & thresholds (per municipality)  │
+└──────────────┬──────────────────────────────────┘
+               │  
                ▼
 ┌──────────────────────────────┐
 │  MEM outputs                 │
