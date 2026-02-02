@@ -9,8 +9,8 @@ to be used in the context of early warning detection of epidemic surges, develop
 of the **AESOP Project**.
 
 The original MEM methodology was proposed and widely implemented in **R**. This work provides 
-a **fully Python-based implementation**, designed for large-scale, municipality-level 
-surveillance analyses and integration with modern data pipelines.
+a **fully Python-based implementation**, designed for large-scale, scalable and municipality-level 
+surveillance analyses, particularly within the AESOP Project.
 
 ---
 
@@ -33,7 +33,7 @@ Key adaptations include:
 
 ## Workflow overview
 
-The MEM pipeline is executed in **two main steps**, each corresponding to an executable script.
+The MEM pipeline is executed in **three main steps**, each corresponding to an executable script.
 
 ```
 ┌──────────────────────────────┐
@@ -42,23 +42,33 @@ The MEM pipeline is executed in **two main steps**, each corresponding to an exe
 └──────────────┬───────────────┘
                │
                ▼
-┌──────────────────────────────────────────────┐
-│  Script 1 (def_sea_peri_MEM_all_cities.py)   │
-│  Select season & delta (per municipality)    │
-└──────────────┬───────────────────────────────┘
+┌──────────────────────────────────────────────────┐
+│  Script 1: def_sea_peri_MEM_all_cities.py         │
+│  Select season definition & delta                 │
+│  (per municipality)                               │
+└──────────────┬───────────────────────────────────┘
                │  def_sea_MEM_out_<date>.parquet
                ▼
-┌─────────────────────────────────────────────────┐
-│  Script 2 (mem_thresholds_all_cities.py)        │
-│  MEM baselines & thresholds (per municipality)  │
-└──────────────┬──────────────────────────────────┘
-               │  
+┌──────────────────────────────────────────────────┐
+│  Script 2: mem_thresholds_all_cities.py           │
+│  Estimate MEM baselines, epidemic thresholds,     │
+│  and intensity levels                             │
+│  (per municipality)                               │
+└──────────────┬───────────────────────────────────┘
+               │  mem_output_<date>.parquet
                ▼
-┌──────────────────────────────┐
-│  MEM outputs                 │
-│  Baseline, thresholds,       │
-│  intensity levels            │
-└──────────────────────────────┘
+┌──────────────────────────────────────────────────┐
+│  Script 3: surge_aps_with_MEM.py                  │
+│  Define epidemic surges and warning signals       │
+│  (MEM-based + fallback strategy)                  │
+└──────────────┬───────────────────────────────────┘
+               │
+               ▼
+┌──────────────────────────────────────────────┐
+│  Final AESOP-ready dataset                   │
+│  Weekly MEM-based warning indicators         |
+|. aesop_02_02_2026_with_MEM.parquet           │
+└──────────────────────────────────────────────┘
 ```
 
 ---
@@ -78,14 +88,6 @@ This script:
 
 Each municipality is processed independently.
 
-### Outputs
-
-* `def_sea_MEM_out_<date>.parquet`
-  Selected seasonal definition and MEM parameter (`delta`) for each municipality.
-
-* `set_bad_cities_<date>.csv`
-  Municipalities for which no valid MEM configuration was found.
-
 ### Input data requirements
 
 The input dataset must contain, at minimum:
@@ -96,6 +98,14 @@ The input dataset must contain, at minimum:
 * `atend_ivas` – weekly ILI/IVAS counts
 
 Additional metadata columns (state, municipality name, rates) may be included.
+
+### Outputs
+
+* `def_sea_MEM_out_<date>.parquet`
+  Selected seasonal definition and MEM parameter (`delta`) for each municipality.
+
+* `set_bad_cities_<date>.csv`
+  Municipalities for which no valid MEM configuration was found.
 
 ---
 
@@ -129,6 +139,26 @@ selected in the previous step.
 
 ---
 
+## 3. Define epidemic surges and generate warning signals
+**Script:** `mem_define_surges_all_cities.py`
+
+This script:
+
+* loads MEM thresholds estimated in Script 2,
+* applies MEM-based surge definitions to weekly IVAS counts,
+* generates:
+    * binary epidemic surge indicators (0/1),
+    * multi-level surge intensity categories,
+* removes isolated one-week signals and enforces temporal consistency,
+* applies a fallback statistical definition for municipalities where MEM
+  thresholds could not be estimated,
+* merges MEM-based and fallback results into a unified dataset.
+
+### Outputs
+* `aesop_<date>_with_MEM.parquet`
+Final dataset containing weekly MEM-based surges indicators per municipality,
+ready for visualization, modeling, and decision-support workflows.
+
 ## Notes
 
 * This implementation adapts the original MEM methodology to Python while
@@ -141,6 +171,7 @@ selected in the previous step.
   surveillance workflows within the **AESOP Project**.
 
 ---
+
 
 ## Citation
 
