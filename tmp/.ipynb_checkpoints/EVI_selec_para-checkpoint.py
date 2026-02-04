@@ -17,9 +17,7 @@ from pathlib import Path
 
 
 # Read data
-
 df = pd.read_parquet('/opt/storage/shared/aesop/aesop_shared/ensamble_modelling/aesop_02_02_2026_with_MEM.parquet')
-
 
 df = df[df.year_week >= '2022-42']
 
@@ -28,9 +26,15 @@ df = df[df.year_week >= '2022-42']
 
 warnings.filterwarnings("ignore")
 
-results_muni = []
+out_dir = Path("/opt/storage/shared/aesop/aesop_shared/ensamble_modelling/evi_par")
+#fname = f"evi_best_par_muni_{datetime.now():%d_%m_%Y}.parquet"
+#out_path = out_dir / fname
+
+#out_dir.mkdir(exist_ok=True)
 
 for code in df.co_ibge.unique():
+
+    print(code)
 
     set_muni = df[df.co_ibge == code].copy()
 
@@ -46,33 +50,29 @@ for code in df.co_ibge.unique():
 
     set_muni["sinal_evi_ivas"] = set_muni["ind"].astype(int)
 
+    #if len(df_m) < 52:  # example: require ≥1 year
+    #    continue
+
     m_values = np.arange(3, 20, 1)
     c_values = np.arange(0.1, int(set_muni.evi_t1_t.max()) - 0.3, 0.1)
 
     df_res = evi_func.grid_search_m_c(m_values, c_values, set_muni)
+    #df_res = df_res[(df_res["sensitivity"] >= 0.5) & (df_res['specificity'] >= 0.5)]
 
     if len(df_res) == 0:
         continue
 
+    
     df_constrained = df_res[(df_res["sensitivity"] >= 0.5) & (df_res['specificity'] >= 0.5)]
+
+    if df_constrained.empty:
+        continue  
 
     best = df_constrained.loc[df_constrained["youden_J"].idxmax()]
     best["co_ibge"] = code
-    results_muni.append(best)
-
-# Final data
-
-df_best_muni = pd.DataFrame(results_muni)
-
-
-# Save data
-
-out_dir = Path("/opt/storage/shared/aesop/aesop_shared/ensamble_modelling")
-
-fname = f"evi_best_par_muni_{datetime.now():%d_%m_%Y}.parquet"
-
-df_best_muni.to_parquet(out_dir / fname)
-
+       
+    best_df = pd.DataFrame([best])
+    best_df.to_parquet(out_dir / f"best_{code}.parquet")
 
 
 
