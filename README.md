@@ -131,7 +131,7 @@ selected in the previous step.
 
 * `mem_output_<date>.parquet`
   Consolidated MEM results per municipality, including:
-
+  
   * baseline and post-baseline values,
   * epidemic and post-epidemic thresholds,
   * intensity levels (low, medium, high),
@@ -140,6 +140,7 @@ selected in the previous step.
 ---
 
 ## 3. Define epidemic surges and generate warning signals
+
 **Script:** `mem_define_surges_all_cities.py`
 
 This script:
@@ -147,17 +148,18 @@ This script:
 * loads MEM thresholds estimated in Script 2,
 * applies MEM-based surge definitions to weekly IVAS counts,
 * generates:
-    * binary epidemic surge indicators (0/1),
-    * multi-level surge intensity categories,
+  * binary epidemic surge indicators (0/1),
+  * multi-level surge intensity categories,
 * removes isolated one-week signals and enforces temporal consistency,
 * applies a fallback statistical definition for municipalities where MEM
   thresholds could not be estimated,
 * merges MEM-based and fallback results into a unified dataset.
 
 ### Outputs
+
 * `aesop_<date>_with_MEM.parquet`
-Final dataset containing weekly MEM-based surges indicators per municipality,
-ready for visualization, modeling, and decision-support workflows.
+  Final dataset containing weekly MEM-based surges indicators per municipality,
+  ready for visualization, modeling, and decision-support workflows.
 
 ## Notes
 
@@ -172,7 +174,6 @@ ready for visualization, modeling, and decision-support workflows.
 
 ---
 
-
 ## Citation
 
 If you use this software, please cite it as:
@@ -182,7 +183,3 @@ If you use this software, please cite it as:
 
 A `CITATION.cff` file is provided to facilitate citation in software-aware
 reference managers.
-
-
-
-
