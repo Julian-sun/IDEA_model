@@ -60,7 +60,7 @@ def summary_is_valid(
     summary,
     years_to_check,
     k_start_min=10,
-    r_max=15,
+    r_max=20,
     year_col="epiyear",
 ):
     """
@@ -85,12 +85,12 @@ def summary_is_valid(
 def find_best_season_and_delta(
     df,
     city,
-    season_weeks=[36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 0],
+    season_weeks=[0, 52, 51, 50, 49, 48, 47, 46, 45, 44, 43, 42, 41, 40, 39, 38, 37, 36, 35, 34, 33, 32, 31, 30],
     delta_start=0.02,
     delta_max=0.04,
     delta_step=0.001,
     k_start_min=10,
-    r_max=15,
+    r_max=20,
 ):
     """
     Identify the first combination of seasonal definition and MEM delta
